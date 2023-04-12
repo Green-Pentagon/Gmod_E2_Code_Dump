@@ -1,5 +1,6 @@
-#RotationTrigger local copy of O2's Walking Chip, commented to the best of ability & used for understanding of how it works & for possible futre endevours.
+#Couldn't find the Source for the original code, however credit goes to O2 for the original piece of code
 
+#A local copy of O2's Walking Chip, commented to the best of ability & used for understanding of how it works & for possible futre endevours.
 
 @name COMMENTED O2's Walking Chip
 @inputs Pod:wirelink
