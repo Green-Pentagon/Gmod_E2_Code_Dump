@@ -1,0 +1,207 @@
+#RotationTrigger local copy of O2's Walking Chip, commented to the best of ability & used for understanding of how it works & for possible futre endevours.
+#A wobble is caused at high speeds, which could be fixed by lowering the max speed
+
+#Replaced the hard-coded Ranger value with RangerMaxHeight variable
+
+@name Hovercraft
+@inputs Pod:wirelink #CamController:wirelink
+@outputs  EjectDriver Headlight Grab Push #PlayerEyesAngle:angle DriverPosition:vector
+@persist   MotionWS RotationAD Space Shift Alt HeadlightButton E:entity Props:array RangerDown:ranger MovingCentreOfMass:vector RotationTrigger:angle RangerMaxHeight RangerHeight Roll HasJumped JumpPwr Power Spd ESpd RunSpeedCap WalkS Acc MaxSpd Cos Sin I WVel Accumulate Torque
+@model models/maxofs2d/cube_tool.mdls
+#models/squad/sf_plates/sf_plate2x3.mdl
+#models/hunter/blocks/cube05x05x025.mdl
+#Model used by the expression
+
+
+
+#SOUND INDEX
+# 0 - Deactivate Sound & Moving Sound & Activation Sound
+# 1 - Landing Sound & Jumping Sound
+# 3 - Headlight
+
+
+interval(10)
+
+
+#Types of objects the Ranger Raycast beam ignores
+rangerFilter(E) #Ignores Itself (The Expression)
+rangerFilter(Props)
+RangerDown=rangerOffset(RangerMaxHeight,E:massCenter(),vec(0,0,-1))
+#Beam 45 units in length, from the centre of mass
+
+#------------------------------------------------
+
+#Determines the Directions of movement
+MotionWS =  (Pod:number("W")-Pod:number("S"))
+RotationAD =(Pod:number("A")-Pod:number("D"))
+LMouse =     Pod:number("Mouse1")
+RMouse =     Pod:number("Mouse2")
+Space =      Pod:number("Space")
+Shift =      Pod:number("Shift")
+Alt =        Pod:number("Alt")
+HeadlightButton =   Pod:number("R")
+#------------------------------------------------
+
+MovingCentreOfMass=E:massCenter() #Centre of mass of Chip Model
+RangerHeight=RangerDown:position():z()+(RangerMaxHeight + 1) #Current height of ranger?
+
+ESpd=toUnit("km/h",E:velL():x())/2.5 #unsure of what this speed value represents, however it is used for cosmetic sides (hologram & footstep sound), AS WELL AS determining the height of hover
+RunSpeedCap=(MaxSpd/((Alt|Space)+1) *(Shift+1)) #Forward/Backward Speed Cap, increasing when Shift is held down & decresing when Space or Alt is held down
+
+MovingCentreOfMass+=E:forward()*Spd
+RotationTrigger=ang(0,1,0)*RotationAD*Torque #Triggers when user wishes to rotate, allowing the rotation force to be applied
+
+
+Acc+=WVel #Accumilates a velocity which it uses for angles
+#this velocity appears to be equal to WVel, which is equal to 100
+
+
+#When the distance from ground to centre of mass equals 45 units or less, a hit is registered
+
+
+
+
+#------------------------------------------------
+if(first()|duped()|dupefinished()){#Upon spawning
+    E=entity()
+    E:setMass(200000)        #Sets its own mass
+    #E:setTrails(10,0,1,"trails/laser",vec(255,0,0),255)
+    Props=E:getConstraints() #Gets attached props
+    
+    MaxSpd=100                #Maximum speed of movement
+    JumpPwr=50               #Force of Jump
+    Torque=50                #Turn Force
+    WVel=100                 #???
+    Accumulate=0.4           #???
+    RangerMaxHeight = 45     #The height which the chip will hover from
+    #Original: 45
+    
+    Headlight = 0
+    Grab = 0
+}
+#------------------------------------------------
+
+
+
+#-----------------------------------------------------------------
+#Force Allowing the player to turn the vehicle
+E:applyAngForce((RotationTrigger*10-E:angVel())*E:inertia():length()*10)
+#PlayerEyesAngle = CamController:angle("CamAng")
+#DriverPosition = Pod:entity("Driver"):pos() + vec(0,-50,50)
+#-----------------------------------------------------------------
+
+
+
+if(RangerDown:hit()){
+    
+    if(changed(Space)&!Space){#If player pressed Space Bar & isn't currently holding it, JUMP
+        if(Pod:number("Active")){ #If player is currently using Pod
+            
+            Power=max(JumpPwr-RangerDown:distance(),0)
+            E:soundPlay(1,0,"Weapon_PhysCannon.Launch")
+            HasJumped=1
+        }
+    }
+    
+    #Forward/Backward Movement
+    if(MotionWS>0){# Forwards
+        if(Spd<RunSpeedCap){Spd+=Accumulate}
+        if(Spd>RunSpeedCap){Spd-=Accumulate}
+    }
+    if(MotionWS<0){#Backwards
+        if(Spd>-RunSpeedCap){Spd-=Accumulate}
+        if(Spd<-RunSpeedCap){Spd+=Accumulate}
+    }
+    
+    #WALK/RUNNING SOUND DELAY
+    
+    WalkS+=WVel*(abs(ESpd)>0.5) #seems to account for every time the robot places its foot down, depending on speed
+    if(3600<WalkS & (Pod:number("Active") == 1)){#The value may be hard-coded & I assume was chosen to match with when the robot places its foot down
+        #OG value: 1800
+        if(Shift){
+            E:soundPlay(1,0,"buttons/combine_button1.wav")
+        }
+        
+        E:soundPlay(0,0,"misc/hologram_move.wav")
+        WalkS=0
+        
+    }
+    
+    #-----------------------------------------------------------------
+    #Force Holding up the chip mid-aid at a specific height
+    #This force also has the additional bit of code, which lowers the vehicle a bit to the ground when Space is held down!
+    
+    #ORIGINAL
+    #E:applyForce(((MovingCentreOfMass:setZ(RangerHeight-5+sin(Acc*2)*E:velL():x()/(100-(Shift*50*(abs(ESpd)>10))))+vec(0,0,-(Space*15)+Power)-E:massCenter())*2.5-E:vel()/10)*E:mass())
+    
+    #No Jump Dip, Jump is a lot weaker!
+    #THE REASON FOR THIS IS HOW THE Power Variable is formed in the part of the code in which a check is made when the player is performing a jump
+    #SIMPLE FIX: Increase the value of Power when Jump release is detected OR multiply the power inside the statement below by a factor, for example x10
+    E:applyForce(((MovingCentreOfMass:setZ(RangerHeight-5+sin(Acc*2)*E:velL():x()/(100-(Shift*50*(abs(ESpd)>10))))+vec(0,0,Power*10)-E:massCenter())*2.5-E:vel()/10)*E:mass())
+    
+    
+    #-----------------------------------------------------------------
+    #Force Allowing the player to turn the vehicle
+    #E:applyAngForce((RotationTrigger*10-E:angVel())*E:inertia():length()*10)
+    #-----------------------------------------------------------------
+}
+
+#Air & Ground Friction
+if(!MotionWS|HasJumped){ #If not turning OR mid-air
+    #Ground friction = 1/30 every interval
+    #Air Friction = 1/130 every interval
+    
+    
+    if (Spd != 0){
+        #Spd-=Spd/(30+HasJumped*100)
+        Spd-=Spd/(1+HasJumped*100)
+    }
+}
+
+#A statement that triggers when vehicle lands back down onto the ground from a jump
+if(changed(RangerDown:hit())&RangerDown:hit()){
+    
+    HasJumped=0
+    Power=0
+    E:soundPlay(1,0,"buttons/combine_button2.wav")
+}
+
+if(changed(Pod:number("Active"))){
+    if((Pod:number("Active") == 1)){
+        if((owner() != Pod:entity("Driver"))){ #if not driver, kick them out
+            EjectDriver = 1
+            E:soundPlay(0,0,"/buttons/button11.wav")
+        }else{
+          E:soundPlay(0,0,"misc/hologram_start.wav")
+          
+        }
+    }
+    elseif ((Pod:number("Active") != 1)){
+        E:soundPlay(0,0,"misc/hologram_stop.wav")
+        EjectDriver = 0
+    }
+    
+}
+
+if( (changed(HeadlightButton))&(HeadlightButton == 1)){
+    E:soundPlay(3,0,"buttons/button16.wav")
+    if (Headlight == 0){
+        Headlight = 1
+    }else{
+        Headlight = 0
+    }
+}
+
+if(changed(LMouse)){
+    Grab = LMouse
+}
+
+if(changed(RMouse)){
+    Push = RMouse * 1000
+}
+
+#Force Responsible for keeping the vehicle upright
+#E:applyAngForce((angnorm(ang(0,E:angles():yaw(),-sin(Acc)*E:velL():x()/50+clamp((E:velL():y()/5),-5,5))-E:angles())*10-E:angVel())*E:inertia():length()*10)
+
+#NO SHAKE!
+E:applyAngForce((angnorm(ang(0,E:angles():yaw(),0)-E:angles())*10-E:angVel())*E:inertia():length()*10)
