@@ -1,0 +1,21 @@
+#Displays a laser pointer's distance value in HUD form.
+
+@name Laser Pointer Measuring Tool
+@inputs LaserPointerReciever:wirelink EGP:wirelink
+@outputs DisHU DisM
+@persist 
+
+ScrW = egpScrW(owner())
+ScrH = egpScrH(owner())
+
+interval(100)
+if((LaserPointerReciever:number("Active") == 1)){
+    DisHU = round(LaserPointerReciever:ranger("RangerData"):distance(),2)
+    DisM = round(toUnit("m",DisHU),2)
+    EGP:egpText(1,"Distance (m): " + DisM , vec2(ScrW/100,ScrH/4.2))
+    EGP:egpText(2,"Distance (HU): " + DisHU, vec2(ScrW/100,ScrH/4))
+    EGP:egpColor(1,vec(0,200,255))
+    EGP:egpColor(2,vec(0,100,200))
+}else{
+    EGP:egpClear()
+}
