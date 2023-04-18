@@ -1,0 +1,35 @@
+@name I SEE YOU
+@inputs EGP:wirelink Target:entity Owner:entity Activate
+@outputs NextTarget
+@persist 
+@trigger 
+interval(100)
+ScrW = egpScrW(owner())
+ScrH = egpScrH(owner())
+TargetName = Target:name()
+TargetPos = round(Target:pos())
+OwnerPos = Owner:pos()
+#PosDiff = toString(round(TargetPos - OwnerPos))
+
+if (Activate == 1){
+    if(Owner:keyPressed("RIGHT")){
+    NextTarget = 1
+    }
+    else{
+    NextTarget = 0
+    }
+    EGP:egpText(1,"Name:"+TargetName, vec2(ScrW/100,ScrH/4.2))
+    EGP:egpText(2,"Pos:"+TargetPos, vec2(ScrW/100,ScrH/4))
+    #EGP:egpText(2,"PosDiff:"+PosDiff, vec2(ScrW/100,ScrH/4))
+    EGP:egpText(3,"HP:"+Target:health(),vec2(ScrW/100,ScrH/3.8))
+    #EGP:egpText(4,"AR:"+Target:armor(),vec2(ScrW/100,ScrH/3.6))
+    EGP:egpText(4,"AR:BLANK",vec2(ScrW/100,ScrH/3.6))
+    EGP:egpColor(1,vec(255,0,255))
+    EGP:egpColor(2,vec(255,255,0))
+    EGP:egpColor(3,vec(255,0,0))
+    EGP:egpColor(4,vec(0,0,255))
+    
+}
+elseif(Activate == 0){
+    EGP:egpClear()
+}
