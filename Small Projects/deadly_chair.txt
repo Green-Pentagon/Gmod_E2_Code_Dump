@@ -1,0 +1,8 @@
+@name Deadly Chair
+@inputs  Chair:entity
+ 
+interval(50)
+if(changed(Chair:driver())){
+    Chair:killPod()
+}
+
