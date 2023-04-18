@@ -1,16 +1,10 @@
-#RotationTrigger local copy of O2's Walking Chip, commented to the best of ability & used for understanding of how it works & for possible futre endevours.
-#A wobble is caused at high speeds, which could be fixed by lowering the max speed
-
-#Replaced the hard-coded Ranger value with RangerMaxHeight variable
+#Originally based on O2's Walking Chip (Couldn't locate original creator)
 
 @name Hovercraft
 @inputs Pod:wirelink #CamController:wirelink
 @outputs  EjectDriver Headlight Grab Push #PlayerEyesAngle:angle DriverPosition:vector
-@persist   MotionWS RotationAD Space Shift Alt HeadlightButton E:entity Props:array RangerDown:ranger MovingCentreOfMass:vector RotationTrigger:angle RangerMaxHeight RangerHeight Roll HasJumped JumpPwr Power Spd ESpd RunSpeedCap WalkS Acc MaxSpd Cos Sin I WVel Accumulate Torque
+@persist   MotionWS RotationAD Space Shift Alt LightButton PushMultiplier LiftMagnitude E:entity Props:array RangerDown:ranger MovingCentreOfMass:vector RotationTrigger:angle RangerMaxHeight RangerHeight Roll HasJumped JumpPwr Power Spd ESpd RunSpeedCap WalkS Acc MaxSpd Cos Sin I WVel Accumulate Torque
 @model models/maxofs2d/cube_tool.mdls
-#models/squad/sf_plates/sf_plate2x3.mdl
-#models/hunter/blocks/cube05x05x025.mdl
-#Model used by the expression
 
 
 
@@ -38,15 +32,18 @@ LMouse =     Pod:number("Mouse1")
 RMouse =     Pod:number("Mouse2")
 Space =      Pod:number("Space")
 Shift =      Pod:number("Shift")
+LightButton =Pod:number("Light")
 Alt =        Pod:number("Alt")
-HeadlightButton =   Pod:number("R")
+RButton =    Pod:number("R")
+
+MotionUD = (RButton - Alt)
 #------------------------------------------------
 
 MovingCentreOfMass=E:massCenter() #Centre of mass of Chip Model
 RangerHeight=RangerDown:position():z()+(RangerMaxHeight + 1) #Current height of ranger?
 
 ESpd=toUnit("km/h",E:velL():x())/2.5 #unsure of what this speed value represents, however it is used for cosmetic sides (hologram & footstep sound), AS WELL AS determining the height of hover
-RunSpeedCap=(MaxSpd/((Alt|Space)+1) *(Shift+1)) #Forward/Backward Speed Cap, increasing when Shift is held down & decresing when Space or Alt is held down
+RunSpeedCap=(MaxSpd/(Space+1) *(Shift+1)) #Forward/Backward Speed Cap, increasing when Shift is held down & decresing when Space is held down
 
 MovingCentreOfMass+=E:forward()*Spd
 RotationTrigger=ang(0,1,0)*RotationAD*Torque #Triggers when user wishes to rotate, allowing the rotation force to be applied
@@ -74,6 +71,8 @@ if(first()|duped()|dupefinished()){#Upon spawning
     WVel=100                 #???
     Accumulate=0.4           #???
     RangerMaxHeight = 45     #The height which the chip will hover from
+    PushMultiplier = 5000
+    LiftMagnitude = 5
     #Original: 45
     
     Headlight = 0
@@ -112,6 +111,15 @@ if(RangerDown:hit()){
         if(Spd>-RunSpeedCap){Spd-=Accumulate}
         if(Spd<-RunSpeedCap){Spd+=Accumulate}
     }
+    
+    if(MotionUD>0){#Up
+        RangerMaxHeight += LiftMagnitude
+    }
+    if(MotionUD<0){#Down
+        RangerMaxHeight -= LiftMagnitude
+    }
+    
+    
     
     #WALK/RUNNING SOUND DELAY
     
@@ -183,7 +191,7 @@ if(changed(Pod:number("Active"))){
     
 }
 
-if( (changed(HeadlightButton))&(HeadlightButton == 1)){
+if( (changed(LightButton))&(LightButton == 1)){
     E:soundPlay(3,0,"buttons/button16.wav")
     if (Headlight == 0){
         Headlight = 1
@@ -197,11 +205,11 @@ if(changed(LMouse)){
 }
 
 if(changed(RMouse)){
-    Push = RMouse * 1000
+    Push = RMouse * PushMultiplier
 }
 
-#Force Responsible for keeping the vehicle upright
+#Force Responsible for keeping the vehicle upright (commented out version has a wobble added to it, which simulates walker legs)
 #E:applyAngForce((angnorm(ang(0,E:angles():yaw(),-sin(Acc)*E:velL():x()/50+clamp((E:velL():y()/5),-5,5))-E:angles())*10-E:angVel())*E:inertia():length()*10)
 
-#NO SHAKE!
+#Version without simulated wobble
 E:applyAngForce((angnorm(ang(0,E:angles():yaw(),0)-E:angles())*10-E:angVel())*E:inertia():length()*10)
